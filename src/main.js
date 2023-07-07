@@ -81,124 +81,135 @@ scene("game", () =>{
 
 	//show aliens
 	let alienMap = [];
+function spawnAliens() {
+  for (let row = 0; row < ALIEN_ROWS; row++) {
+    alienMap[row] = [];
+    for (let col = 0; col < ALIEN_COLS; col++) {
+      const x = col * BLOCK_WIDTH * 2 + OFFSET_X;
+      const y = row * BLOCK_HEIGHT + OFFSET_Y;
+      const alien = add([
+        pos(x, y),
+        sprite("alien"),
+        area(),
+        scale(4),
+        anchor("center"),
+        "alien",
+        {
+          row: row,
+          col: col,
+        },
+      ]);
+      alien.play("fly");
+      alienMap[row][col] = alien;
+    }
+  }
+}
+spawnAliens();
 
-		//moving the aliens
-		let alienDirection = 1
-		let alienMoveCounter = 0
-		let alienRowsMoved = 0
-	
-		function moveAliensDown(){
-			alienRowsMoved++;
-	
-			alien.children.foreach((item) => {
-				item.moveBy(0, BLOCK_HEIGHT)
-			})
+let pause = false;
+onKeyDown("left", () => {
+  if (pause) return;
+  if (player.pos.x >= SCREEN_EDGE) {
+    player.move(-1 * PLAYER_MOVE_SPEED, 0);
+  }
+});
+
+onKeyDown("right", () => {
+  if (pause) return;
+  if (player.pos.x <= width() - SCREEN_EDGE) {
+    player.move(PLAYER_MOVE_SPEED, 0);
+  }
+});
+
+let alienDirection = 1;
+let alienMoveCounter = 0;
+let alienRowsMoved = 0;
+
+onUpdate(() => {
+	if (pause) return;
+
+	for (let row = 0; row < ALIEN_ROWS; row++) {
+		for (let col = 0; col < ALIEN_COLS; col++) {
+			const alien = alienMap[row][col];
+			alien.move(alienDirection * ALIEN_SPEED, 0);
 		}
-	function spawnAliens() {
-		const alien = add([
-			scale(4),
-		])
-		for (let row = 0; row < ALIEN_ROWS; row++) {
-			alienMap[row] = [];
-			for (let col = 0; col < ALIEN_COLS; col++) {
-			const x = col * BLOCK_WIDTH * 2 + OFFSET_X;
-			const y = row * BLOCK_HEIGHT + OFFSET_Y;
-			alien.add([
-				pos(x, y),
-				sprite("alien"),
-				area(),
-				anchor("center"),
-				"alien",
-				{
-				row: row,
-				col: col,
-				},
-			]);
-			alien.play("fly");
-			alienMap[row][col] = alien;
-			}
-		}
-
-		alien.onUpdate(() => {
-			if (pause) return;
-
-			alien.children.foreach((item) => {
-				item.move(alienDirection * ALIEN_SPEED, 0)
-			})
-	
-			alienMoveCounter += 1
-	
-			if (alienMoveCounter > ALIEN_STEPS) {
-				alienDirection =  alienDirection * -1
-				alienMoveCounter = 0
-				moveAliensDown()
-			}
-	
-			if (alienRowsMoved > ALIEN_ROWS_MOVE) {
-				pause = true
-				player.play("explode")
-				wait(2, () => {
-					go("gameover", player.score)
-				})
-			}
-	
-		})
+	}	
+  
+	// every("alien", (alien) => {
+	//   alien.move(alienDirection * ALIEN_SPEED, 0);
+	// });
+  
+	alienMoveCounter++;
+  
+	if (alienMoveCounter > ALIEN_STEPS) {
+	  alienDirection = alienDirection * -1;
+	  alienMoveCounter = 0;
+	  moveAliensDown();
 	}
-
-	spawnAliens();
-
-	//movind player
-	let pause = false
-	onKeyDown("left", () => {
-		if (pause) return
-		if (player.pos.x >= SCREEN_EDGE) {
-			player.move(-1 * PLAYER_MOVE_SPEED, 0)
-		}
-	})
-	onKeyDown("right", () => {
-		if (pause) return
-		if (player.pos.x <= width() - SCREEN_EDGE) {
-			player.move(PLAYER_MOVE_SPEED, 0)
-		}
-	})
-
-
-
-
-	function spawnBullet(bulletPos, direction, tag) {
-		add([
-			rect(2, 6),
-			pos(bulletPos),
-			anchor("center"),
-			color(255,255,255),
-			area(),
-			offscreen({ destroy: true }),
-			"missile",
-			tag,
-			{
-				direction
-			}
-		])
+  
+	if (alienRowsMoved > ALIEN_ROWS_MOVE) {
+	  pause = true;
+	  player.play("explode");
+	  wait(2, () => {
+		go("gameOver", player.score);
+	  });
 	}
-
-	let lastShootTime = time()
-	onKeyPress("space", () => {
-		if (pause) return;
-		if (time() - lastShootTime > GUN_COOLDOWN_TIME) {
-			lastShootTime = time()
-			spawnBullet(player.pos, -1, "bullet")
+  });
+  
+  function moveAliensDown() {
+	alienRowsMoved++;
+	for (let row = 0; row < ALIEN_ROWS; row++) {
+		for (let col = 0; col < ALIEN_COLS; col++) {
+			const alien = alienMap[row][col];
+			alien.moveBy(0, BLOCK_HEIGHT);
 		}
-	})
+	}	
+	// every("alien", (alien) => {
+	//   alien.moveBy(0, BLOCK_HEIGHT);
+	// });
+  }
 
-	onUpdate("missile", (missile) => {
-		if (pause) return;
-		missile.move(0, BULLET_SPEED * missile.direction)
-	})
+  let lastShootTime = time();
 
+onKeyPress("space", () => {
+  if (pause) return;
+  if (time() - lastShootTime > GUN_COOLDOWN_TIME) {
+    lastShootTime = time();
+    spawnBullet(player.pos, -1, "bullet");
+  }
+});
+
+function spawnBullet(bulletPos, direction, tag) {
+  add([
+    rect(2, 6),
+    pos(bulletPos),
+    anchor("center"),
+    color(255, 255, 255),
+    area(),
+	offscreen({ destroy: true }),
+    "missile",
+    tag,
+    {
+      direction,
+    },
+  ]);
+}
+
+onUpdate("missile", (missile) => {
+	if (pause) return;
+	missile.move(0, BULLET_SPEED * missile.direction);
+  });
+
+onCollide("alien","player",() => {
+	go("gameOver")
 })
 
-scene("gameover", () => {
 
+	
+})
+
+scene("gameOver", () => {
+	text("GAME OVER")
 })
 
 go("game")
